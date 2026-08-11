@@ -136,7 +136,7 @@
       transition: opacity 0.12s ease;
     }
 
-    /* Mouth Element - Supports U-shaped Smile & Dynamic Lip Sync */
+    /* Mouth Element */
     .mouth {
       width: 28vw;
       height: 3vw;
@@ -152,12 +152,16 @@
       will-change: transform, border-radius, height;
     }
 
-    /* U-Shaped Smile Mouth Expression */
+    /* True U-Shaped Smile Line (Curved Line, NOT Solid Semicircle) */
     .mouth.smile-u {
-      height: 7vw !important;
-      max-height: 70px !important;
-      min-height: 35px !important;
+      height: 5.5vw !important;
+      max-height: 55px !important;
+      min-height: 28px !important;
+      background-color: transparent !important;
+      border: 4px solid #00ffcc !important;
+      border-top: none !important;
       border-radius: 0 0 100px 100px !important;
+      box-shadow: 0 8px 24px rgba(0, 255, 204, 0.7), inset 0 -4px 14px rgba(0, 255, 204, 0.5) !important;
     }
 
     /* Minimal Bottom Control Panel */
@@ -285,7 +289,7 @@
     let cameraInstance = null;
     let faceDetectionInstance = null;
 
-    // Expressions: neutral, smile (U-shaped), surprised, wink, sleep
+    // Expressions: neutral, smile (U-shaped line), surprised, wink, sleep
     const expressions = ['neutral', 'smile', 'surprised', 'wink', 'sleep'];
     let currentExpIndex = 0;
 
@@ -325,6 +329,7 @@
 
       switch (exp) {
         case 'smile':
+          // U-Shaped Smile Line (Outlined Arc)
           mouth.classList.add('smile-u');
           eyeLeft.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scaleY(0.75) scaleX(1.05)`;
           eyeRight.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scaleY(0.75) scaleX(1.05)`;
@@ -376,15 +381,12 @@
             if (results.detections && results.detections.length > 0) {
               const box = results.detections[0].locationData.relativeBoundingBox;
               
-              // Center of detected face in camera frame
               const faceX = box.xmin + box.width / 2;
               const faceY = box.ymin + box.height / 2;
 
-              // Front camera mirror calculation: normX from -0.5 to +0.5
               const normX = (1.0 - faceX) - 0.5;
               const normY = faceY - 0.5;
 
-              // Map to eye gaze offsets
               targetGazeX = normX * 8; // -4vw to +4vw
               targetGazeY = normY * 6; // -3vh to +3vh
             }
@@ -550,7 +552,7 @@
       if (v > 0.05) {
         mouth.style.transform = `scaleY(${(1 + v * 5.2).toFixed(2)}) scaleX(${(1 + v * 0.15).toFixed(2)})`;
       } else {
-        mouth.style.transform = 'scaleY(1) scaleX(1)';
+        mouth.style.transform = 'scaleY(1)';
       }
     };
   </script>
