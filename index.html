@@ -1,16 +1,413 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>React Artifact</title>
-  <style>*,:after,:before{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/*! tailwindcss v3.4.18 | MIT License | https://tailwindcss.com*/*,:after,:before{box-sizing:border-box;border:0 solid #e5e7eb}:after,:before{--tw-content:""}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0}fieldset,legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::-moz-placeholder,textarea::-moz-placeholder{opacity:1;color:#9ca3af}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.visible{visibility:visible}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.block{display:block}.flex{display:flex}.hidden{display:none}.transform{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.border{border-width:1px}.outline{outline-style:solid}.blur{--tw-blur:blur(8px)}.blur,.drop-shadow{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.drop-shadow{--tw-drop-shadow:drop-shadow(0 1px 2px rgba(0,0,0,.1)) drop-shadow(0 1px 1px rgba(0,0,0,.06))}.filter{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.transition{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.ease-in-out{transition-timing-function:cubic-bezier(.4,0,.2,1)}#root,body,html{min-height:100%}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif}[role=button]:not([aria-disabled=true]),button:not(:disabled),label[for],select:not(:disabled),summary{cursor:pointer}</style>
-  <script type="module" crossorigin src="/pixel-face-app/assets/index-DjdP01ED.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pixel Face - Realtime Lip Sync</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body, html {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #030607;
+      font-family: 'Space Mono', 'Noto Sans JP', monospace;
+      color: #00ffcc;
+    }
+
+    /* Fullscreen Screen Container */
+    .app-viewport {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, rgba(0, 255, 204, 0.05) 0%, rgba(0, 0, 0, 0.95) 75%);
+      cursor: pointer;
+    }
+
+    /* CRT Scanline Effect */
+    .crt-scanline {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.15), transparent);
+      opacity: 0.6;
+      animation: scanline 8s linear infinite;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100vh); }
+    }
+
+    /* Ambient Breathing Container */
+    .face-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: min(8vh, 60px);
+      animation: breathe 3.2s ease-in-out infinite;
+      will-change: transform;
+      z-index: 2;
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+
+    /* Eyes Row */
+    .eyes-row {
+      display: flex;
+      gap: min(22vw, 150px);
+      align-items: center;
+    }
+
+    /* Eye Box */
+    .eye {
+      width: min(28vw, 130px);
+      height: min(28vw, 130px);
+      background-color: #00ffcc;
+      border-radius: 6px;
+      box-shadow: 0 0 24px rgba(0, 255, 204, 0.6), 0 0 50px rgba(0, 255, 204, 0.25);
+      position: relative;
+      transition: transform 0.08s ease, height 0.15s ease, opacity 0.15s ease;
+      will-change: transform, height, width;
+    }
+
+    /* Eye Pupil / Highlight */
+    .eye-glint {
+      position: absolute;
+      top: 18%;
+      left: 18%;
+      width: 28%;
+      height: 28%;
+      background: rgba(255, 255, 255, 0.65);
+      border-radius: 2px;
+      transition: opacity 0.12s ease;
+    }
+
+    /* Mouth Element */
+    .mouth {
+      width: min(46vw, 240px);
+      height: min(4vw, 18px);
+      background-color: #00ffcc;
+      border-radius: 6px;
+      box-shadow: 0 0 24px rgba(0, 255, 204, 0.6), 0 0 50px rgba(0, 255, 204, 0.25);
+      transform-origin: center center;
+      transition: transform 0.06s linear, height 0.08s ease;
+      will-change: transform, height;
+    }
+
+    /* Expression Modifiers */
+    .eye.blinking {
+      transform: scaleY(0.08) !important;
+    }
+
+    .expression-badge {
+      position: absolute;
+      top: 2.5vh;
+      right: 4vw;
+      font-size: 11px;
+      color: rgba(0, 255, 204, 0.4);
+      letter-spacing: 0.12em;
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    /* Minimal Bottom Control Panel */
+    .control-panel {
+      position: absolute;
+      bottom: 3vh;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(90vw, 360px);
+      background: rgba(0, 0, 0, 0.75);
+      border: 1px solid rgba(0, 255, 204, 0.2);
+      border-radius: 30px;
+      padding: 8px 16px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 10;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 255, 204, 0.1) inset;
+    }
+
+    .btn-mic {
+      background: rgba(0, 255, 204, 0.1);
+      color: #00ffcc;
+      border: 1px solid rgba(0, 255, 204, 0.3);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    .btn-mic.active {
+      background: #00ffcc;
+      color: #000;
+      border-color: #00ffcc;
+      box-shadow: 0 0 14px rgba(0, 255, 204, 0.7);
+    }
+
+    .mic-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: currentColor;
+    }
+
+    .vol-track {
+      flex: 1;
+      height: 4px;
+      background: rgba(0, 255, 204, 0.15);
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .vol-fill {
+      height: 100%;
+      width: 0%;
+      background: #00ffcc;
+      box-shadow: 0 0 8px #00ffcc;
+      border-radius: 10px;
+      transition: width 0.05s linear;
+    }
+  </style>
 </head>
 <body>
-  <div id="root"></div>
-  
-  <script>(function(){function m(a){var h=a.getAttribute("href");if(!h)return;try{var u=new URL(h,document.baseURI);if((u.protocol==="http:"||u.protocol==="https:")&&u.host!==location.host){a.target="_blank";a.rel="noopener noreferrer";}}catch(e){}}function s(){document.querySelectorAll("a[href]").forEach(m);}if(document.readyState!=="loading"){s();}else{document.addEventListener("DOMContentLoaded",s);}document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(a){m(a);}},true);})();</script>
-  
+
+  <div class="app-viewport" id="viewport">
+    <div class="crt-scanline"></div>
+
+    <div class="expression-badge" id="exp-badge">NEUTRAL</div>
+
+    <!-- FACE -->
+    <div class="face-container">
+      <!-- EYES -->
+      <div class="eyes-row">
+        <div class="eye" id="eye-left">
+          <div class="eye-glint"></div>
+        </div>
+        <div class="eye" id="eye-right">
+          <div class="eye-glint"></div>
+        </div>
+      </div>
+
+      <!-- MOUTH -->
+      <div class="mouth" id="mouth"></div>
+    </div>
+
+    <!-- MINIMAL CONTROLS -->
+    <div class="control-panel" id="control-panel">
+      <button class="btn-mic" id="btn-mic">
+        <span class="mic-dot"></span>
+        <span id="btn-mic-text">マイク開始</span>
+      </button>
+      
+      <div class="vol-track">
+        <div class="vol-fill" id="vol-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // App State
+    let isMicActive = false;
+    let audioCtx = null;
+    let analyser = null;
+    let micStream = null;
+    let volume = 0;
+    
+    // Expressions: neutral, smile, surprised, wink, sleep
+    const expressions = ['NEUTRAL', 'SMILE', 'SURPRISED', 'WINK', 'SLEEP'];
+    let currentExpIndex = 0;
+
+    // Elements
+    const viewport = document.getElementById('viewport');
+    const controlPanel = document.getElementById('control-panel');
+    const eyeLeft = document.getElementById('eye-left');
+    const eyeRight = document.getElementById('eye-right');
+    const mouth = document.getElementById('mouth');
+    const expBadge = document.getElementById('exp-badge');
+    const btnMic = document.getElementById('btn-mic');
+    const btnMicText = document.getElementById('btn-mic-text');
+    const volFill = document.getElementById('vol-fill');
+
+    // Prevent panel clicks from triggering expression tap
+    controlPanel.addEventListener('click', (e) => e.stopPropagation());
+
+    // Expression Tap Switcher
+    viewport.addEventListener('click', () => {
+      currentExpIndex = (currentExpIndex + 1) % expressions.length;
+      const exp = expressions[currentExpIndex];
+      expBadge.textContent = exp;
+      applyExpression(exp);
+    });
+
+    function applyExpression(exp) {
+      // Reset transforms
+      eyeLeft.style.transform = '';
+      eyeRight.style.transform = '';
+      
+      switch (exp) {
+        case 'SMILE':
+          eyeLeft.style.transform = 'scaleY(0.7) rotate(-5deg)';
+          eyeRight.style.transform = 'scaleY(0.7) rotate(5deg)';
+          break;
+        case 'SURPRISED':
+          eyeLeft.style.transform = 'scale(1.25)';
+          eyeRight.style.transform = 'scale(1.25)';
+          break;
+        case 'WINK':
+          eyeLeft.style.transform = 'scaleY(0.15)';
+          eyeRight.style.transform = 'scale(1.05)';
+          break;
+        case 'SLEEP':
+          eyeLeft.style.transform = 'scaleY(0.15)';
+          eyeRight.style.transform = 'scaleY(0.15)';
+          break;
+        case 'NEUTRAL':
+        default:
+          break;
+      }
+    }
+
+    // Natural Blinking Loop
+    function scheduleBlink() {
+      const delay = Math.random() * 3500 + 2000;
+      setTimeout(() => {
+        if (expressions[currentExpIndex] !== 'SLEEP' && expressions[currentExpIndex] !== 'WINK') {
+          eyeLeft.classList.add('blinking');
+          eyeRight.classList.add('blinking');
+          setTimeout(() => {
+            eyeLeft.classList.remove('blinking');
+            eyeRight.classList.remove('blinking');
+            scheduleBlink();
+          }, 120);
+        } else {
+          scheduleBlink();
+        }
+      }, delay);
+    }
+    scheduleBlink();
+
+    // Toggle Microphone & Realtime Lip Sync
+    btnMic.addEventListener('click', async () => {
+      if (isMicActive) {
+        stopMicrophone();
+      } else {
+        await startMicrophone();
+      }
+    });
+
+    async function startMicrophone() {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(micStream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+
+        isMicActive = true;
+        btnMic.classList.add('active');
+        btnMicText.textContent = 'マイク停止';
+
+        renderAudioLoop();
+      } catch (err) {
+        alert('マイクのアクセスを許可してください');
+        console.error(err);
+      }
+    }
+
+    function stopMicrophone() {
+      if (micStream) {
+        micStream.getTracks().forEach(track => track.stop());
+      }
+      isMicActive = false;
+      btnMic.classList.remove('active');
+      btnMicText.textContent = 'マイク開始';
+      volFill.style.width = '0%';
+      mouth.style.transform = 'scaleY(1)';
+    }
+
+    function renderAudioLoop() {
+      if (!isMicActive || !analyser) return;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(dataArray);
+
+      // RMS Volume Calculation
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        sum += dataArray[i] * dataArray[i];
+      }
+      const rms = Math.sqrt(sum / dataArray.length);
+      // Normalized volume (0 to 1)
+      const rawVol = Math.min(1.0, (rms / 90) * 2.2);
+
+      // Smooth volume interpolation
+      volume += (rawVol - volume) * 0.35;
+
+      // Update Meter UI
+      volFill.style.width = `${Math.min(100, Math.round(volume * 100))}%`;
+
+      // Realtime Mouth Lip Sync Scale
+      // Silent threshold: volume < 0.08 -> closed line
+      if (volume > 0.08) {
+        const mouthScaleY = 1 + volume * 5.5; // Scales mouth height when speaking
+        const mouthScaleX = 1 + volume * 0.25;
+        mouth.style.transform = `scaleY(${mouthScaleY.toFixed(2)}) scaleX(${mouthScaleX.toFixed(2)})`;
+      } else {
+        mouth.style.transform = 'scaleY(1) scaleX(1)';
+      }
+
+      requestAnimationFrame(renderAudioLoop);
+    }
+
+    // Global External API Support
+    window.setPixelMouth = function(val) {
+      const v = Math.max(0, Math.min(1, val));
+      if (v > 0.05) {
+        mouth.style.transform = `scaleY(${(1 + v * 5.5).toFixed(2)}) scaleX(${(1 + v * 0.25).toFixed(2)})`;
+      } else {
+        mouth.style.transform = 'scaleY(1) scaleX(1)';
+      }
+    };
+  </script>
 </body>
 </html>
