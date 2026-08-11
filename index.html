@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Pixel Face - Realtime ChatGPT Voice Lip Sync & Face Tracking</title>
+  <title>Pixel Face - Realtime Finger Tracking & Lip Sync</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
   
-  <!-- MediaPipe Face Detection -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossorigin="anonymous"></script>
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
   
   <style>
     * {
@@ -202,6 +202,12 @@
 
     .btn-dot {
       font-size: 12px;
+      transition: color 0.15s ease, text-shadow 0.15s ease;
+    }
+
+    .btn-dot.red-active {
+      color: #ff2255 !important;
+      text-shadow: 0 0 10px #ff2255, 0 0 20px #ff2255 !important;
     }
 
     .vol-track {
@@ -225,7 +231,7 @@
 </head>
 <body>
 
-  <!-- HIDDEN WEBCAM VIDEO FOR MEDIAPIPE FACE TRACKING -->
+  <!-- HIDDEN WEBCAM VIDEO FOR MEDIAPIPE FINGER TRACKING -->
   <video id="webcam-video" playsinline muted></video>
 
   <div class="app-viewport" id="viewport">
@@ -258,7 +264,7 @@
         <span>MIC</span>
       </button>
 
-      <!-- INCAME FACE TRACKING BUTTON -->
+      <!-- INCAME FINGER TRACKING BUTTON -->
       <button class="btn-action" id="btn-incame">
         <span class="btn-dot" id="btn-incame-dot">●</span>
         <span id="btn-incame-text">INCAME</span>
@@ -279,11 +285,12 @@
     let micStream = null;
     let volume = 0;
 
-    // Face Tracking State
+    // Finger Recognition State
     let isIncameActive = false;
     let camStream = null;
-    let faceDetectionInstance = null;
+    let handsInstance = null;
     let isProcessingFrame = false;
+    let lastFingerDetectedTime = 0;
 
     // Expressions: neutral, smile (U-shaped line), surprised, wink, sleep
     const expressions = ['neutral', 'smile', 'surprised', 'wink', 'sleep'];
@@ -367,12 +374,20 @@
       }
 
       if (vol > 0.05) {
-        const openH = 12 + vol * 22;
-        const topY = 20 - openH / 2;
-        const botY = 20 + openH / 2;
-        mouthPath.setAttribute('d', `M 8 ${topY.toFixed(1)} Q 50 ${topY.toFixed(1)} 92 ${topY.toFixed(1)} Q 92 ${botY.toFixed(1)} 50 ${botY.toFixed(1)} Q 8 ${botY.toFixed(1)} 8 ${topY.toFixed(1)} Z`);
+        // Clean rectangle opening — grows taller with volume
+        const openH = 4 + vol * 26;
+        const topY = (20 - openH / 2).toFixed(1);
+        const botY = (20 + openH / 2).toFixed(1);
+        const lx = 10, rx = 90;
+        // Simple rounded rectangle: top line, right side, bottom line, left side, close
+        mouthPath.setAttribute('d',
+          `M ${lx} ${topY} L ${rx} ${topY} L ${rx} ${botY} L ${lx} ${botY} Z`
+        );
+        mouthPath.setAttribute('fill', 'rgba(0,255,204,0.18)');
+        mouthPath.setAttribute('stroke-linejoin', 'round');
       } else {
         mouthPath.setAttribute('d', 'M 5 20 L 95 20');
+        mouthPath.setAttribute('fill', 'none');
       }
     }
 
@@ -394,7 +409,7 @@
     // TOUCH / POINTER FALLBACK GAZE TRACKING
     // ------------------------------------------------------------
     function updatePointerGaze(clientX, clientY) {
-      if (isIncameActive) return; // Camera tracking takes priority when active
+      if (isIncameActive && (Date.now() - lastFingerDetectedTime < 1000)) return; // Camera finger tracking takes priority
       const centerX = window.innerWidth / 2;
       const centerY = window.innerHeight / 2;
       targetGazeX = ((clientX - centerX) / window.innerWidth) * 10;
@@ -407,7 +422,7 @@
     }, { passive: true });
 
     // ------------------------------------------------------------
-    // MEDIAPIPE IN-CAMERA FACE RECOGNITION (BULLETPROOF WEBRTC)
+    // MEDIAPIPE FINGER RECOGNITION (RED GLOW INDICATOR ON FINGER DETECTED)
     // ------------------------------------------------------------
     btnIncame.addEventListener('click', async () => {
       if (isIncameActive) {
@@ -421,7 +436,7 @@
       try {
         btnIncameText.textContent = '起動中...';
 
-        // 1. Direct WebRTC Camera Request (100% reliable across iOS & Android)
+        // 1. Direct WebRTC Camera Request
         camStream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'user',
@@ -433,63 +448,70 @@
         webcamVideo.srcObject = camStream;
         await webcamVideo.play();
 
-        // 2. Initialize MediaPipe Face Detection
-        if (!faceDetectionInstance) {
-          faceDetectionInstance = new FaceDetection({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
+        // 2. Initialize MediaPipe Hands
+        if (!handsInstance) {
+          handsInstance = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
           });
 
-          faceDetectionInstance.setOptions({
-            model: 'short',
-            minDetectionConfidence: 0.4
+          handsInstance.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.4,
+            minTrackingConfidence: 0.4
           });
 
-          faceDetectionInstance.onResults((results) => {
-            if (results.detections && results.detections.length > 0) {
-              const box = results.detections[0].locationData.relativeBoundingBox;
+          handsInstance.onResults((results) => {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+              const landmarks = results.multiHandLandmarks[0];
+              // Landmark 8: Index Finger Tip
+              const indexTip = landmarks[8];
               
-              // Face Center (0 to 1)
-              const faceX = box.xmin + box.width / 2;
-              const faceY = box.ymin + box.height / 2;
+              // Front camera mirror calculation
+              const normX = (1.0 - indexTip.x) - 0.5; // -0.5 to +0.5
+              const normY = indexTip.y - 0.5;        // -0.5 to +0.5
 
-              // Front camera mirror calculation: normX from -0.5 to +0.5
-              const normX = (1.0 - faceX) - 0.5;
-              const normY = faceY - 0.5;
-
-              // Smooth Gaze Offset
+              // Map to eye gaze offsets
               targetGazeX = normX * 10; // -5vw to +5vw
               targetGazeY = normY * 8;  // -4vh to +4vh
 
-              // Visual indicator: Active face tracking
-              btnIncameText.textContent = 'INCAME ON';
+              // FINGER DETECTED -> RED GLOW INDICATOR (●)
+              btnIncameDot.classList.add('red-active');
+              btnIncameText.textContent = 'FINGER OK';
+              lastFingerDetectedTime = Date.now();
+            } else {
+              // If no finger detected for 0.4s -> Turn off red dot
+              if (Date.now() - lastFingerDetectedTime > 400) {
+                btnIncameDot.classList.remove('red-active');
+                btnIncameText.textContent = 'INCAME ON';
+              }
             }
           });
         }
 
         isIncameActive = true;
         btnIncame.classList.add('active');
-        btnIncameDot.textContent = '■';
         btnIncameText.textContent = 'INCAME ON';
 
         // 3. Process frames loop
-        processCameraLoop();
+        processHandsLoop();
       } catch (err) {
-        alert('インカメのアクセス許可が必要です。\nブラウザでカメラの許可をオンにしてください。');
+        alert('インカメのアクセス許可が必要です。\nブラウザでカメラを許可してください。');
         btnIncameText.textContent = 'INCAME';
         console.error(err);
       }
     }
 
-    async function processCameraLoop() {
+    async function processHandsLoop() {
       if (!isIncameActive || !webcamVideo) return;
-      if (webcamVideo.readyState >= 2 && faceDetectionInstance && !isProcessingFrame) {
+      if (webcamVideo.readyState >= 2 && handsInstance && !isProcessingFrame) {
         isProcessingFrame = true;
         try {
-          await faceDetectionInstance.send({ image: webcamVideo });
+          await handsInstance.send({ image: webcamVideo });
         } catch (e) {}
         isProcessingFrame = false;
       }
-      requestAnimationFrame(processCameraLoop);
+      requestAnimationFrame(processHandsLoop);
     }
 
     function stopIncameTracking() {
@@ -501,6 +523,7 @@
       targetGazeX = 0;
       targetGazeY = 0;
       btnIncame.classList.remove('active');
+      btnIncameDot.classList.remove('red-active');
       btnIncameDot.textContent = '●';
       btnIncameText.textContent = 'INCAME';
     }
