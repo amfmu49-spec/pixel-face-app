@@ -3,11 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Pixel Face - Realtime Lip Sync & Gaze Tracking</title>
+  <title>Pixel Face - MediaPipe Finger Tracking & Lip Sync</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  
+  <!-- MediaPipe Hands & Camera Utils -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
   
   <style>
     * {
@@ -16,7 +20,7 @@
       padding: 0;
       user-select: none;
       -webkit-user-select: none;
-      touch-action: none;
+      touch-action: manipulation;
     }
 
     body, html {
@@ -26,6 +30,16 @@
       background-color: #030607;
       font-family: 'Space Mono', 'Noto Sans JP', monospace;
       color: #00ffcc;
+    }
+
+    /* Hidden Camera Video Element */
+    #webcam-video {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+      z-index: -100;
     }
 
     /* Viewport Frame */
@@ -38,7 +52,6 @@
       align-items: center;
       justify-content: center;
       background: radial-gradient(ellipse at center, rgba(0, 255, 204, 0.06) 0%, rgba(0, 0, 0, 0.95) 75%);
-      cursor: crosshair;
     }
 
     /* CRT Scanline */
@@ -60,7 +73,7 @@
       100% { transform: translateY(100vh); }
     }
 
-    /* Floating Breathing Container - Original Gaps */
+    /* Floating Breathing Container - Original Meta AI Gaps */
     .face-container {
       display: flex;
       flex-direction: column;
@@ -102,7 +115,7 @@
       box-shadow: 0 0 24px rgba(0, 255, 204, 0.6), 0 0 50px rgba(0, 255, 204, 0.25);
       border-radius: 4px;
       position: relative;
-      transition: height 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.2s ease;
+      transition: height 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.2s ease;
       will-change: transform, height, width;
     }
 
@@ -139,64 +152,45 @@
       will-change: transform;
     }
 
-    /* Touch Pointer Indicator */
-    .touch-cursor {
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      border: 2px solid #00ffcc;
-      border-radius: 50%;
-      transform: translate(-50%, -50%) scale(0);
-      pointer-events: none;
-      z-index: 20;
-      box-shadow: 0 0 10px #00ffcc;
-      transition: transform 0.15s ease-out, opacity 0.15s ease-out;
-      opacity: 0;
-    }
-    .touch-cursor.active {
-      transform: translate(-50%, -50%) scale(1);
-      opacity: 0.8;
-    }
-
     /* Minimal Bottom Control Panel */
     .control-panel {
       position: absolute;
       bottom: 3vh;
       left: 50%;
       transform: translateX(-50%);
-      width: min(92vw, 420px);
+      width: min(94vw, 440px);
       background: rgba(0, 0, 0, 0.88);
       border: 1px solid rgba(0, 255, 204, 0.18);
       border-radius: 14px;
-      padding: 10px 16px;
+      padding: 10px 14px;
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       z-index: 10;
       box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,255,204,0.08) inset;
     }
 
-    .btn-mic {
+    .btn-action {
       background: rgba(0, 255, 204, 0.1);
       color: #00ffcc;
       border: 1px solid rgba(0, 255, 204, 0.22);
-      padding: 9px 16px;
+      padding: 9px 12px;
       border-radius: 8px;
       font-family: inherit;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       white-space: nowrap;
       transition: all 0.2s ease;
       outline: none;
     }
 
-    .btn-mic.active {
+    .btn-action.active {
       background: #00ffcc;
       color: #000;
       border-color: #00ffcc;
@@ -204,7 +198,7 @@
     }
 
     .btn-dot {
-      font-size: 13px;
+      font-size: 12px;
     }
 
     .vol-track {
@@ -214,6 +208,7 @@
       border-radius: 10px;
       overflow: hidden;
       position: relative;
+      min-width: 40px;
     }
 
     .vol-fill {
@@ -228,9 +223,11 @@
 </head>
 <body>
 
+  <!-- HIDDEN WEBCAM VIDEO FOR MEDIAPIPE HAND TRACKING -->
+  <video id="webcam-video" playsinline muted></video>
+
   <div class="app-viewport" id="viewport">
     <div class="crt-scanline"></div>
-    <div class="touch-cursor" id="touch-cursor"></div>
 
     <!-- FACE -->
     <div class="face-container" id="face-container">
@@ -248,11 +245,19 @@
 
     <!-- MINIMAL BOTTOM PANEL -->
     <div class="control-panel" id="control-panel">
-      <button class="btn-mic" id="btn-mic">
-        <span class="btn-dot" id="btn-dot">●</span>
-        <span id="btn-mic-text">マイクで口パク</span>
+      <!-- MIC BUTTON -->
+      <button class="btn-action" id="btn-mic">
+        <span class="btn-dot" id="btn-mic-dot">●</span>
+        <span id="btn-mic-text">マイク口パク</span>
       </button>
 
+      <!-- FINGER TRACKING BUTTON (IN-CAMERA HAND DETECTION) -->
+      <button class="btn-action" id="btn-finger">
+        <span class="btn-dot" id="btn-finger-dot">●</span>
+        <span id="btn-finger-text">指追従(インカメ)</span>
+      </button>
+
+      <!-- VOL BAR -->
       <div class="vol-track">
         <div class="vol-fill" id="vol-fill"></div>
       </div>
@@ -266,37 +271,45 @@
     let analyser = null;
     let micStream = null;
     let volume = 0;
-    let isSpeaking = false;
+
+    // Finger Hand Tracking State
+    let isFingerTrackingActive = false;
+    let cameraInstance = null;
+    let handsInstance = null;
 
     // Expressions: neutral, smile, surprised, wink, sleep
     const expressions = ['neutral', 'smile', 'surprised', 'wink', 'sleep'];
     let currentExpIndex = 0;
 
-    // Eye Gaze Tracking (Following Finger / Touch / Mouse)
-    let targetGazeX = 0; // -3vw to +3vw
-    let targetGazeY = 0; // -2vw to +2vw
+    // Eye Gaze Target Position
+    let targetGazeX = 0; // -4vw to +4vw
+    let targetGazeY = 0; // -3vh to +3vh
     let currentGazeX = 0;
     let currentGazeY = 0;
-    let isTouching = false;
 
     // Elements
     const viewport = document.getElementById('viewport');
     const controlPanel = document.getElementById('control-panel');
+    const webcamVideo = document.getElementById('webcam-video');
     const eyeLeft = document.getElementById('eye-left');
     const eyeRight = document.getElementById('eye-right');
     const mouth = document.getElementById('mouth');
+    
     const btnMic = document.getElementById('btn-mic');
-    const btnDot = document.getElementById('btn-dot');
+    const btnMicDot = document.getElementById('btn-mic-dot');
     const btnMicText = document.getElementById('btn-mic-text');
+    
+    const btnFinger = document.getElementById('btn-finger');
+    const btnFingerDot = document.getElementById('btn-finger-dot');
+    const btnFingerText = document.getElementById('btn-finger-text');
+    
     const volFill = document.getElementById('vol-fill');
-    const touchCursor = document.getElementById('touch-cursor');
 
     // Prevent panel clicks from triggering expression tap
     controlPanel.addEventListener('click', (e) => e.stopPropagation());
 
     // Expression Tap Switcher (Tap face/screen)
     viewport.addEventListener('click', () => {
-      if (isTouching) return;
       currentExpIndex = (currentExpIndex + 1) % expressions.length;
       applyExpression(expressions[currentExpIndex]);
     });
@@ -328,61 +341,90 @@
     }
 
     // ------------------------------------------------------------
-    // FINGER & POINTER EYE GAZE TRACKING
+    // MEDIAPIPE IN-CAMERA HAND FINGER RECOGNITION (INVISIBLE CAMERA)
     // ------------------------------------------------------------
-    function updatePointerGaze(clientX, clientY) {
-      const centerX = window.innerWidth / 2;
-      const centerY = window.innerHeight / 2;
+    btnFinger.addEventListener('click', async () => {
+      if (isFingerTrackingActive) {
+        stopFingerTracking();
+      } else {
+        await startFingerTracking();
+      }
+    });
 
-      // Range in viewport width units (vw/vh)
-      const normX = (clientX - centerX) / window.innerWidth; // -0.5 to +0.5
-      const normY = (clientY - centerY) / window.innerHeight; // -0.5 to +0.5
+    async function startFingerTracking() {
+      try {
+        btnFingerText.textContent = '初期化中...';
 
-      targetGazeX = normX * 8; // Max 4vw left/right shift
-      targetGazeY = normY * 6; // Max 3vh top/bottom shift
+        if (!handsInstance) {
+          handsInstance = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+          });
 
-      // Show touch cursor
-      touchCursor.style.left = `${clientX}px`;
-      touchCursor.style.top = `${clientY}px`;
-      touchCursor.classList.add('active');
+          handsInstance.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+          });
+
+          handsInstance.onResults((results) => {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+              const landmarks = results.multiHandLandmarks[0];
+              // Landmark 8: Index Finger Tip
+              const indexTip = landmarks[8];
+              
+              // Front camera mirror calculation
+              const normX = (1.0 - indexTip.x) - 0.5; // -0.5 to +0.5
+              const normY = indexTip.y - 0.5;        // -0.5 to +0.5
+
+              // Map to eye gaze offsets
+              targetGazeX = normX * 8; // -4vw to +4vw
+              targetGazeY = normY * 6; // -3vh to +3vh
+            }
+          });
+        }
+
+        if (!cameraInstance) {
+          cameraInstance = new Camera(webcamVideo, {
+            onFrame: async () => {
+              if (isFingerTrackingActive && handsInstance) {
+                await handsInstance.send({ image: webcamVideo });
+              }
+            },
+            width: 640,
+            height: 480,
+            facingMode: 'user'
+          });
+        }
+
+        await cameraInstance.start();
+        isFingerTrackingActive = true;
+        btnFinger.classList.add('active');
+        btnFingerDot.textContent = '■';
+        btnFingerText.textContent = '指追従 停止';
+      } catch (err) {
+        alert('インカメのアクセスを許可してください');
+        btnFingerText.textContent = '指追従(インカメ)';
+        console.error(err);
+      }
     }
 
-    window.addEventListener('pointermove', (e) => {
-      updatePointerGaze(e.clientX, e.clientY);
-    });
-
-    window.addEventListener('pointerdown', (e) => {
-      isTouching = true;
-      updatePointerGaze(e.clientX, e.clientY);
-    });
-
-    window.addEventListener('pointerup', () => {
-      isTouching = false;
-      touchCursor.classList.remove('active');
-    });
-
-    window.addEventListener('touchmove', (e) => {
-      if (e.touches.length > 0) {
-        updatePointerGaze(e.touches[0].clientX, e.touches[0].clientY);
+    function stopFingerTracking() {
+      isFingerTrackingActive = false;
+      if (cameraInstance) {
+        cameraInstance.stop();
       }
-    }, { passive: true });
-
-    window.addEventListener('touchstart', (e) => {
-      if (e.touches.length > 0) {
-        isTouching = true;
-        updatePointerGaze(e.touches[0].clientX, e.touches[0].clientY);
-      }
-    }, { passive: true });
-
-    window.addEventListener('touchend', () => {
-      isTouching = false;
-      touchCursor.classList.remove('active');
-    });
+      targetGazeX = 0;
+      targetGazeY = 0;
+      btnFinger.classList.remove('active');
+      btnFingerDot.textContent = '●';
+      btnFingerText.textContent = '指追従(インカメ)';
+    }
 
     // Smooth Pupil Eye Gaze Animation Loop
     function renderGazeLoop() {
-      currentGazeX += (targetGazeX - currentGazeX) * 0.2;
-      currentGazeY += (targetGazeY - currentGazeY) * 0.2;
+      currentGazeX += (targetGazeX - currentGazeX) * 0.18;
+      currentGazeY += (targetGazeY - currentGazeY) * 0.18;
 
       applyExpression(expressions[currentExpIndex]);
 
@@ -431,7 +473,7 @@
 
         isMicActive = true;
         btnMic.classList.add('active');
-        btnDot.textContent = '■';
+        btnMicDot.textContent = '■';
         btnMicText.textContent = 'マイク停止';
 
         renderAudioLoop();
@@ -446,10 +488,9 @@
         micStream.getTracks().forEach(track => track.stop());
       }
       isMicActive = false;
-      isSpeaking = false;
       btnMic.classList.remove('active');
-      btnDot.textContent = '●';
-      btnMicText.textContent = 'マイクで口パク';
+      btnMicDot.textContent = '●';
+      btnMicText.textContent = 'マイク口パク';
       volFill.style.width = '0%';
       mouth.style.transform = 'scaleY(1)';
     }
@@ -471,26 +512,14 @@
       volFill.style.width = `${Math.min(100, Math.round(volume * 100))}%`;
 
       if (volume > 0.08) {
-        isSpeaking = true;
         const mouthScaleY = 1 + volume * 4.5;
         mouth.style.transform = `scaleY(${mouthScaleY.toFixed(2)})`;
       } else {
-        isSpeaking = false;
         mouth.style.transform = 'scaleY(1)';
       }
 
       requestAnimationFrame(renderAudioLoop);
     }
-
-    // Global Window API
-    window.setPixelMouth = function(val) {
-      const v = Math.max(0, Math.min(1, val));
-      if (v > 0.05) {
-        mouth.style.transform = `scaleY(${(1 + v * 4.5).toFixed(2)})`;
-      } else {
-        mouth.style.transform = 'scaleY(1)';
-      }
-    };
   </script>
 </body>
 </html>
