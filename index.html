@@ -559,8 +559,22 @@
     scheduleBlink();
 
     // ------------------------------------------------------------
-    // ULTRA-HIGH SENSITIVITY AUDIO LIP SYNC (FOR CHATGPT VOICE MODE & DEVICE SPEAKER)
+    // VISUALIZER-STYLE AUDIO LIP SYNC
+    // AudioContext unlocked on first tap (iOS fix).
+    // Direct peak amplitude → mouth height, zero smoothing delay.
     // ------------------------------------------------------------
+
+    // Unlock AudioContext on very first user interaction (iOS Safari requirement)
+    let audioUnlocked = false;
+    document.addEventListener('touchstart', unlockAudio, { once: true });
+    document.addEventListener('click', unlockAudio, { once: true });
+    function unlockAudio() {
+      if (audioUnlocked) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // Resume immediately (required for iOS)
+      audioCtx.resume().then(() => { audioUnlocked = true; });
+    }
+
     btnMic.addEventListener('click', async () => {
       if (isMicActive) {
         stopMicrophone();
@@ -571,19 +585,31 @@
 
     async function startMicrophone() {
       try {
+        // Ensure AudioContext exists and is running
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
+
         micStream = await navigator.mediaDevices.getUserMedia({
           audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: true
+            echoCancellation: false,   // OFF: pick up speaker sound cleanly
+            noiseSuppression: false,   // OFF: don't filter out ChatGPT voice
+            autoGainControl: false     // OFF: prevent gain pump fighting mouth
           }
         });
 
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const source = audioCtx.createMediaStreamSource(micStream);
+
         analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 256;
-        analyser.smoothingTimeConstant = 0.3;
+        analyser.fftSize = 512;
+        // KEY: smoothingTimeConstant = 0 → instant, visualizer-style reaction
+        analyser.smoothingTimeConstant = 0.0;
+        analyser.minDecibels = -90;
+        analyser.maxDecibels = -10;
+
         source.connect(analyser);
 
         isMicActive = true;
@@ -600,8 +626,10 @@
     function stopMicrophone() {
       if (micStream) {
         micStream.getTracks().forEach(track => track.stop());
+        micStream = null;
       }
       isMicActive = false;
+      volume = 0;
       btnMic.classList.remove('active');
       btnMicDot.textContent = '●';
       volFill.style.width = '0%';
@@ -611,25 +639,26 @@
     function renderAudioLoop() {
       if (!isMicActive || !analyser) return;
 
+      // ----- VISUALIZER APPROACH: peak amplitude in vocal range -----
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(dataArray);
 
-      let sum = 0;
+      // Vocal freq range ~80Hz-3kHz → bins 2..60 at 44100/512 sample rate
+      let peak = 0;
       const startBin = 2;
-      const endBin = Math.min(dataArray.length, 50);
-
+      const endBin = Math.min(dataArray.length, 64);
       for (let i = startBin; i < endBin; i++) {
-        sum += dataArray[i] * dataArray[i];
+        if (dataArray[i] > peak) peak = dataArray[i];
       }
 
-      const rms = Math.sqrt(sum / (endBin - startBin));
-      const rawVol = Math.min(1.0, (rms / 35) * 1.8);
-      const targetVol = Math.pow(rawVol, 0.65);
+      // Direct linear map 0-255 → 0-1, high gain so quiet speaker still triggers
+      const rawVol = Math.min(1.0, (peak / 128) * 2.2);
 
-      if (targetVol > volume) {
-        volume += (targetVol - volume) * 0.5;
+      // Visualizer-style: snap up instantly, release with tiny lag
+      if (rawVol > volume) {
+        volume = rawVol;              // instant attack (like a bar visualizer)
       } else {
-        volume += (targetVol - volume) * 0.25;
+        volume *= 0.55;              // smooth decay only
       }
 
       volFill.style.width = `${Math.min(100, Math.round(volume * 100))}%`;
