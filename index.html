@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Pixel Face - Realtime Lip Sync</title>
+  <title>Pixel Face - Realtime Lip Sync & Eye Tracking</title>
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,7 +17,7 @@
       padding: 0;
       user-select: none;
       -webkit-user-select: none;
-      touch-action: manipulation;
+      touch-action: none; /* Smooth touch tracking */
     }
 
     body, html {
@@ -39,7 +39,22 @@
       align-items: center;
       justify-content: center;
       background: radial-gradient(circle at center, rgba(0, 255, 204, 0.05) 0%, rgba(0, 0, 0, 0.95) 75%);
-      cursor: pointer;
+      cursor: crosshair;
+    }
+
+    /* Video Background for Front Camera */
+    .camera-feed {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.35;
+      transform: scaleX(-1); /* Mirror view for front camera */
+      pointer-events: none;
+      z-index: 1;
+      display: none;
+      filter: grayscale(0.5) contrast(1.2);
     }
 
     /* CRT Scanline Effect */
@@ -93,20 +108,35 @@
       border-radius: 6px;
       box-shadow: 0 0 24px rgba(0, 255, 204, 0.6), 0 0 50px rgba(0, 255, 204, 0.25);
       position: relative;
+      overflow: hidden;
       transition: transform 0.08s ease, height 0.15s ease, opacity 0.15s ease;
       will-change: transform, height, width;
     }
 
-    /* Eye Pupil / Highlight */
-    .eye-glint {
+    /* Pupil Block inside Eye (Follows Finger) */
+    .eye-pupil {
       position: absolute;
-      top: 18%;
-      left: 18%;
-      width: 28%;
-      height: 28%;
-      background: rgba(255, 255, 255, 0.65);
+      top: 15%;
+      left: 15%;
+      width: 70%;
+      height: 70%;
+      background: #030607;
+      border-radius: 4px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 10%;
+      transition: transform 0.05s linear;
+      will-change: transform;
+    }
+
+    /* Eye Glint Highlight */
+    .eye-glint {
+      width: 45%;
+      height: 45%;
+      background: rgba(255, 255, 255, 0.9);
       border-radius: 2px;
-      transition: opacity 0.12s ease;
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
     }
 
     /* Mouth Element */
@@ -137,54 +167,74 @@
       z-index: 4;
     }
 
+    /* Touch Finger Visualizer */
+    .touch-cursor {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border: 2px solid #00ffcc;
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      pointer-events: none;
+      z-index: 20;
+      box-shadow: 0 0 12px #00ffcc;
+      transition: transform 0.15s ease-out, opacity 0.15s ease-out;
+      opacity: 0;
+    }
+    .touch-cursor.active {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 0.8;
+    }
+
     /* Minimal Bottom Control Panel */
     .control-panel {
       position: absolute;
       bottom: 3vh;
       left: 50%;
       transform: translateX(-50%);
-      width: min(90vw, 360px);
-      background: rgba(0, 0, 0, 0.75);
-      border: 1px solid rgba(0, 255, 204, 0.2);
+      width: min(92vw, 420px);
+      background: rgba(0, 0, 0, 0.8);
+      border: 1px solid rgba(0, 255, 204, 0.25);
       border-radius: 30px;
-      padding: 8px 16px;
+      padding: 8px 14px;
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       z-index: 10;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 255, 204, 0.1) inset;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 12px rgba(0, 255, 204, 0.1) inset;
     }
 
-    .btn-mic {
+    .btn-action {
       background: rgba(0, 255, 204, 0.1);
       color: #00ffcc;
       border: 1px solid rgba(0, 255, 204, 0.3);
-      padding: 8px 16px;
+      padding: 8px 14px;
       border-radius: 20px;
       font-family: inherit;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       white-space: nowrap;
       transition: all 0.2s ease;
       outline: none;
+      touch-action: manipulation;
     }
 
-    .btn-mic.active {
+    .btn-action.active {
       background: #00ffcc;
       color: #000;
       border-color: #00ffcc;
       box-shadow: 0 0 14px rgba(0, 255, 204, 0.7);
     }
 
-    .mic-dot {
-      width: 8px;
-      height: 8px;
+    .btn-dot {
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background-color: currentColor;
     }
@@ -196,6 +246,7 @@
       border-radius: 10px;
       overflow: hidden;
       position: relative;
+      min-width: 50px;
     }
 
     .vol-fill {
@@ -210,20 +261,30 @@
 </head>
 <body>
 
+  <!-- FRONT CAMERA VIDEO STREAM (HIDDEN / OVERLAY) -->
+  <video id="camera-video" class="camera-feed" autoplay playsinline muted></video>
+
   <div class="app-viewport" id="viewport">
     <div class="crt-scanline"></div>
+
+    <!-- TOUCH CURSOR -->
+    <div class="touch-cursor" id="touch-cursor"></div>
 
     <div class="expression-badge" id="exp-badge">NEUTRAL</div>
 
     <!-- FACE -->
-    <div class="face-container">
+    <div class="face-container" id="face-container">
       <!-- EYES -->
       <div class="eyes-row">
         <div class="eye" id="eye-left">
-          <div class="eye-glint"></div>
+          <div class="eye-pupil" id="pupil-left">
+            <div class="eye-glint"></div>
+          </div>
         </div>
         <div class="eye" id="eye-right">
-          <div class="eye-glint"></div>
+          <div class="eye-pupil" id="pupil-right">
+            <div class="eye-glint"></div>
+          </div>
         </div>
       </div>
 
@@ -233,11 +294,19 @@
 
     <!-- MINIMAL CONTROLS -->
     <div class="control-panel" id="control-panel">
-      <button class="btn-mic" id="btn-mic">
-        <span class="mic-dot"></span>
-        <span id="btn-mic-text">マイク開始</span>
+      <!-- MIC BUTTON -->
+      <button class="btn-action" id="btn-mic">
+        <span class="btn-dot"></span>
+        <span id="btn-mic-text">マイク</span>
+      </button>
+
+      <!-- FRONT CAMERA BUTTON -->
+      <button class="btn-action" id="btn-cam">
+        <span class="btn-dot"></span>
+        <span id="btn-cam-text">インカメ</span>
       </button>
       
+      <!-- VOL BAR -->
       <div class="vol-track">
         <div class="vol-fill" id="vol-fill"></div>
       </div>
@@ -245,33 +314,52 @@
   </div>
 
   <script>
-    // App State
+    // Audio State
     let isMicActive = false;
     let audioCtx = null;
     let analyser = null;
     let micStream = null;
     let volume = 0;
+
+    // Camera State
+    let isCamActive = false;
+    let camStream = null;
     
     // Expressions: neutral, smile, surprised, wink, sleep
     const expressions = ['NEUTRAL', 'SMILE', 'SURPRISED', 'WINK', 'SLEEP'];
     let currentExpIndex = 0;
 
+    // Eye Gaze Tracking State
+    let targetX = 0; // -1 to +1
+    let targetY = 0; // -1 to +1
+    let currentPupilX = 0;
+    let currentPupilY = 0;
+    let isTouching = false;
+
     // Elements
     const viewport = document.getElementById('viewport');
     const controlPanel = document.getElementById('control-panel');
+    const cameraVideo = document.getElementById('camera-video');
     const eyeLeft = document.getElementById('eye-left');
     const eyeRight = document.getElementById('eye-right');
+    const pupilLeft = document.getElementById('pupil-left');
+    const pupilRight = document.getElementById('pupil-right');
     const mouth = document.getElementById('mouth');
     const expBadge = document.getElementById('exp-badge');
     const btnMic = document.getElementById('btn-mic');
     const btnMicText = document.getElementById('btn-mic-text');
+    const btnCam = document.getElementById('btn-cam');
+    const btnCamText = document.getElementById('btn-cam-text');
     const volFill = document.getElementById('vol-fill');
+    const touchCursor = document.getElementById('touch-cursor');
 
     // Prevent panel clicks from triggering expression tap
     controlPanel.addEventListener('click', (e) => e.stopPropagation());
 
-    // Expression Tap Switcher
-    viewport.addEventListener('click', () => {
+    // Expression Tap Switcher (when clicking outside controls)
+    viewport.addEventListener('click', (e) => {
+      // Don't switch if dragging finger
+      if (isTouching) return;
       currentExpIndex = (currentExpIndex + 1) % expressions.length;
       const exp = expressions[currentExpIndex];
       expBadge.textContent = exp;
@@ -279,7 +367,6 @@
     });
 
     function applyExpression(exp) {
-      // Reset transforms
       eyeLeft.style.transform = '';
       eyeRight.style.transform = '';
       
@@ -306,6 +393,74 @@
       }
     }
 
+    // ------------------------------------------------------------
+    // EYE GAZE TRACKING (FINGER / TOUCH / POINTER TRACKING)
+    // ------------------------------------------------------------
+    function updateGazePosition(clientX, clientY) {
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+
+      // Range: -1 (left/top) to +1 (right/bottom)
+      targetX = Math.max(-1, Math.min(1, (clientX - centerX) / (window.innerWidth * 0.4)));
+      targetY = Math.max(-1, Math.min(1, (clientY - centerY) / (window.innerHeight * 0.4)));
+
+      // Position touch cursor
+      touchCursor.style.left = `${clientX}px`;
+      touchCursor.style.top = `${clientY}px`;
+      touchCursor.classList.add('active');
+    }
+
+    // Pointer & Touch Events
+    window.addEventListener('pointermove', (e) => {
+      updateGazePosition(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('pointerdown', (e) => {
+      isTouching = true;
+      updateGazePosition(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('pointerup', () => {
+      isTouching = false;
+      touchCursor.classList.remove('active');
+    });
+
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 0) {
+        updateGazePosition(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches.length > 0) {
+        isTouching = true;
+        updateGazePosition(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+      isTouching = false;
+      touchCursor.classList.remove('active');
+    });
+
+    // Smooth Pupil Eye Gaze Animation Loop
+    function renderGazeLoop() {
+      // Smooth interpolation (lerp) towards finger target
+      currentPupilX += (targetX - currentPupilX) * 0.25;
+      currentPupilY += (targetY - currentPupilY) * 0.25;
+
+      // Max pupil offset in pixels
+      const maxOffset = 14; 
+      const shiftX = currentPupilX * maxOffset;
+      const shiftY = currentPupilY * maxOffset;
+
+      pupilLeft.style.transform = `translate(${shiftX.toFixed(1)}px, ${shiftY.toFixed(1)}px)`;
+      pupilRight.style.transform = `translate(${shiftX.toFixed(1)}px, ${shiftY.toFixed(1)}px)`;
+
+      requestAnimationFrame(renderGazeLoop);
+    }
+    renderGazeLoop();
+
     // Natural Blinking Loop
     function scheduleBlink() {
       const delay = Math.random() * 3500 + 2000;
@@ -325,7 +480,49 @@
     }
     scheduleBlink();
 
-    // Toggle Microphone & Realtime Lip Sync
+    // ------------------------------------------------------------
+    // FRONT CAMERA (IN-CAMERA) FUNCTIONALITY
+    // ------------------------------------------------------------
+    btnCam.addEventListener('click', async () => {
+      if (isCamActive) {
+        stopFrontCamera();
+      } else {
+        await startFrontCamera();
+      }
+    });
+
+    async function startFrontCamera() {
+      try {
+        camStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        cameraVideo.srcObject = camStream;
+        cameraVideo.style.display = 'block';
+
+        isCamActive = true;
+        btnCam.classList.add('active');
+        btnCamText.textContent = 'カメラOFF';
+      } catch (err) {
+        alert('インカメのアクセスを許可してください');
+        console.error(err);
+      }
+    }
+
+    function stopFrontCamera() {
+      if (camStream) {
+        camStream.getTracks().forEach(track => track.stop());
+      }
+      cameraVideo.srcObject = null;
+      cameraVideo.style.display = 'none';
+
+      isCamActive = false;
+      btnCam.classList.remove('active');
+      btnCamText.textContent = 'インカメ';
+    }
+
+    // ------------------------------------------------------------
+    // MICROPHONE REALTIME LIP SYNC
+    // ------------------------------------------------------------
     btnMic.addEventListener('click', async () => {
       if (isMicActive) {
         stopMicrophone();
@@ -345,7 +542,7 @@
 
         isMicActive = true;
         btnMic.classList.add('active');
-        btnMicText.textContent = 'マイク停止';
+        btnMicText.textContent = 'マイクOFF';
 
         renderAudioLoop();
       } catch (err) {
@@ -360,9 +557,9 @@
       }
       isMicActive = false;
       btnMic.classList.remove('active');
-      btnMicText.textContent = 'マイク開始';
+      btnMicText.textContent = 'マイク';
       volFill.style.width = '0%';
-      mouth.style.transform = 'scaleY(1)';
+      mouth.style.transform = 'scaleY(1) scaleX(1)';
     }
 
     function renderAudioLoop() {
@@ -371,25 +568,18 @@
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(dataArray);
 
-      // RMS Volume Calculation
       let sum = 0;
       for (let i = 0; i < dataArray.length; i++) {
         sum += dataArray[i] * dataArray[i];
       }
       const rms = Math.sqrt(sum / dataArray.length);
-      // Normalized volume (0 to 1)
       const rawVol = Math.min(1.0, (rms / 90) * 2.2);
 
-      // Smooth volume interpolation
       volume += (rawVol - volume) * 0.35;
-
-      // Update Meter UI
       volFill.style.width = `${Math.min(100, Math.round(volume * 100))}%`;
 
-      // Realtime Mouth Lip Sync Scale
-      // Silent threshold: volume < 0.08 -> closed line
       if (volume > 0.08) {
-        const mouthScaleY = 1 + volume * 5.5; // Scales mouth height when speaking
+        const mouthScaleY = 1 + volume * 5.5;
         const mouthScaleX = 1 + volume * 0.25;
         mouth.style.transform = `scaleY(${mouthScaleY.toFixed(2)}) scaleX(${mouthScaleX.toFixed(2)})`;
       } else {
@@ -398,16 +588,6 @@
 
       requestAnimationFrame(renderAudioLoop);
     }
-
-    // Global External API Support
-    window.setPixelMouth = function(val) {
-      const v = Math.max(0, Math.min(1, val));
-      if (v > 0.05) {
-        mouth.style.transform = `scaleY(${(1 + v * 5.5).toFixed(2)}) scaleX(${(1 + v * 0.25).toFixed(2)})`;
-      } else {
-        mouth.style.transform = 'scaleY(1) scaleX(1)';
-      }
-    };
   </script>
 </body>
 </html>
