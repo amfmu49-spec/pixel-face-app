@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Pixel Face - MIC & INCAME Lip Sync</title>
+  <title>Pixel Face - Face Tracking & MIC Lip Sync</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
   
-  <!-- MediaPipe Hands & Camera Utils for In-Camera Finger Tracking -->
+  <!-- MediaPipe Face Detection & Camera Utils -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossorigin="anonymous"></script>
   
   <style>
     * {
@@ -32,7 +32,7 @@
       color: #00ffcc;
     }
 
-    /* Invisible Webcam Element */
+    /* Invisible Webcam Video */
     #webcam-video {
       position: absolute;
       width: 1px;
@@ -231,7 +231,7 @@
 </head>
 <body>
 
-  <!-- HIDDEN WEBCAM VIDEO FOR MEDIAPIPE HAND TRACKING -->
+  <!-- HIDDEN WEBCAM VIDEO FOR MEDIAPIPE FACE TRACKING -->
   <video id="webcam-video" playsinline muted></video>
 
   <div class="app-viewport" id="viewport">
@@ -259,7 +259,7 @@
         <span>MIC</span>
       </button>
 
-      <!-- INCAME FINGER TRACKING BUTTON -->
+      <!-- INCAME FACE TRACKING BUTTON -->
       <button class="btn-action" id="btn-incame">
         <span class="btn-dot" id="btn-incame-dot">●</span>
         <span>INCAME</span>
@@ -273,17 +273,17 @@
   </div>
 
   <script>
-    // Audio High-Precision Lip Sync State
+    // Audio State
     let isMicActive = false;
     let audioCtx = null;
     let analyser = null;
     let micStream = null;
     let volume = 0;
 
-    // Finger Hand Tracking State
+    // Face Tracking State
     let isIncameActive = false;
     let cameraInstance = null;
-    let handsInstance = null;
+    let faceDetectionInstance = null;
 
     // Expressions: neutral, smile (U-shaped), surprised, wink, sleep
     const expressions = ['neutral', 'smile', 'surprised', 'wink', 'sleep'];
@@ -321,12 +321,10 @@
     });
 
     function applyExpression(exp) {
-      // Reset special mouth classes
       mouth.classList.remove('smile-u');
 
       switch (exp) {
         case 'smile':
-          // U-Shaped Smile Mouth
           mouth.classList.add('smile-u');
           eyeLeft.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scaleY(0.75) scaleX(1.05)`;
           eyeRight.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scaleY(0.75) scaleX(1.05)`;
@@ -352,7 +350,7 @@
     }
 
     // ------------------------------------------------------------
-    // MEDIAPIPE IN-CAMERA HAND FINGER RECOGNITION (INVISIBLE CAMERA)
+    // MEDIAPIPE IN-CAMERA FACE RECOGNITION & GAZE TRACKING
     // ------------------------------------------------------------
     btnIncame.addEventListener('click', async () => {
       if (isIncameActive) {
@@ -364,27 +362,27 @@
 
     async function startIncameTracking() {
       try {
-        if (!handsInstance) {
-          handsInstance = new Hands({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        if (!faceDetectionInstance) {
+          faceDetectionInstance = new FaceDetection({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
           });
 
-          handsInstance.setOptions({
-            maxNumHands: 1,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
+          faceDetectionInstance.setOptions({
+            model: 'short',
+            minDetectionConfidence: 0.5
           });
 
-          handsInstance.onResults((results) => {
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-              const landmarks = results.multiHandLandmarks[0];
-              // Landmark 8: Index Finger Tip
-              const indexTip = landmarks[8];
+          faceDetectionInstance.onResults((results) => {
+            if (results.detections && results.detections.length > 0) {
+              const box = results.detections[0].locationData.relativeBoundingBox;
               
-              // Front camera mirror calculation
-              const normX = (1.0 - indexTip.x) - 0.5; // -0.5 to +0.5
-              const normY = indexTip.y - 0.5;        // -0.5 to +0.5
+              // Center of detected face in camera frame
+              const faceX = box.xmin + box.width / 2;
+              const faceY = box.ymin + box.height / 2;
+
+              // Front camera mirror calculation: normX from -0.5 to +0.5
+              const normX = (1.0 - faceX) - 0.5;
+              const normY = faceY - 0.5;
 
               // Map to eye gaze offsets
               targetGazeX = normX * 8; // -4vw to +4vw
@@ -396,8 +394,8 @@
         if (!cameraInstance) {
           cameraInstance = new Camera(webcamVideo, {
             onFrame: async () => {
-              if (isIncameActive && handsInstance) {
-                await handsInstance.send({ image: webcamVideo });
+              if (isIncameActive && faceDetectionInstance) {
+                await faceDetectionInstance.send({ image: webcamVideo });
               }
             },
             width: 640,
@@ -513,7 +511,6 @@
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(dataArray);
 
-      // Focus on human vocal frequencies (approx 150Hz ~ 3500Hz)
       const startBin = 3;
       const endBin = Math.min(dataArray.length, 60);
       let sum = 0;
@@ -525,20 +522,17 @@
       }
 
       const rms = Math.sqrt(sum / count);
-      // Normalized volume (0 to 1) with non-linear power curve for high accuracy
       const normalizedVol = Math.min(1.0, (rms / 75));
       const targetVol = Math.pow(normalizedVol, 0.7);
 
-      // Dynamic attack / decay smoothing
       if (targetVol > volume) {
-        volume += (targetVol - volume) * 0.45; // Fast attack
+        volume += (targetVol - volume) * 0.45;
       } else {
-        volume += (targetVol - volume) * 0.22; // Smooth decay
+        volume += (targetVol - volume) * 0.22;
       }
 
       volFill.style.width = `${Math.min(100, Math.round(volume * 100))}%`;
 
-      // Precision Lip Sync Mouth Expansion
       if (volume > 0.05) {
         const mouthScaleY = 1 + volume * 5.2;
         const mouthScaleX = 1 + volume * 0.15;
