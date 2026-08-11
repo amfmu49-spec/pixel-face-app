@@ -9,8 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
   
-  <!-- MediaPipe Face Detection & Camera Utils -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <!-- MediaPipe Face Detection -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossorigin="anonymous"></script>
   
   <style>
@@ -32,7 +31,7 @@
       color: #00ffcc;
     }
 
-    /* Invisible Webcam Video */
+    /* Hidden Webcam Video */
     #webcam-video {
       position: absolute;
       width: 1px;
@@ -115,7 +114,7 @@
       box-shadow: 0 0 24px rgba(0, 255, 204, 0.6), 0 0 50px rgba(0, 255, 204, 0.25);
       border-radius: 4px;
       position: relative;
-      transition: height 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.2s ease;
+      transition: height 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.2s ease;
       will-change: transform, height, width;
     }
 
@@ -243,7 +242,7 @@
         </div>
       </div>
 
-      <!-- MOUTH SVG WITH PERFECT CLEAN U-SMILE & DYNAMIC OPENING -->
+      <!-- MOUTH SVG WITH CLEAN U-SMILE -->
       <div class="mouth-svg-container">
         <svg class="mouth-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
           <path id="mouth-path" d="M 5 20 L 95 20" stroke="#00ffcc" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
@@ -253,7 +252,7 @@
 
     <!-- MINIMAL BOTTOM PANEL (MIC & INCAME) -->
     <div class="control-panel" id="control-panel">
-      <!-- MIC BUTTON (Captures ChatGPT Voice & Device Audio) -->
+      <!-- MIC BUTTON -->
       <button class="btn-action" id="btn-mic">
         <span class="btn-dot" id="btn-mic-dot">●</span>
         <span>MIC</span>
@@ -262,7 +261,7 @@
       <!-- INCAME FACE TRACKING BUTTON -->
       <button class="btn-action" id="btn-incame">
         <span class="btn-dot" id="btn-incame-dot">●</span>
-        <span>INCAME</span>
+        <span id="btn-incame-text">INCAME</span>
       </button>
 
       <!-- HIGH-SENSITIVITY AUDIO VOL BAR -->
@@ -282,16 +281,17 @@
 
     // Face Tracking State
     let isIncameActive = false;
-    let cameraInstance = null;
+    let camStream = null;
     let faceDetectionInstance = null;
+    let isProcessingFrame = false;
 
     // Expressions: neutral, smile (U-shaped line), surprised, wink, sleep
     const expressions = ['neutral', 'smile', 'surprised', 'wink', 'sleep'];
     let currentExpIndex = 0;
 
     // Eye Gaze Target Position
-    let targetGazeX = 0;
-    let targetGazeY = 0;
+    let targetGazeX = 0; // -5vw to +5vw
+    let targetGazeY = 0; // -4vh to +4vh
     let currentGazeX = 0;
     let currentGazeY = 0;
 
@@ -308,6 +308,7 @@
     
     const btnIncame = document.getElementById('btn-incame');
     const btnIncameDot = document.getElementById('btn-incame-dot');
+    const btnIncameText = document.getElementById('btn-incame-text');
     
     const volFill = document.getElementById('vol-fill');
 
@@ -323,14 +324,13 @@
     function applyExpression(exp) {
       switch (exp) {
         case 'smile':
-          // Pure U-Shaped Smile Arc Line (NO TOP LINE AT ALL)
+          // Pure U-Shaped Smile Arc Line (Top line 100% hidden)
           mouthPath.setAttribute('d', 'M 10 8 Q 50 38 90 8');
           mouthPath.setAttribute('fill', 'none');
           eyeLeft.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scaleY(0.75) scaleX(1.05)`;
           eyeRight.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scaleY(0.75) scaleX(1.05)`;
           break;
         case 'surprised':
-          // Open Surprised Oval Mouth
           mouthPath.setAttribute('d', 'M 35 8 Q 50 8 65 8 Q 65 32 50 32 Q 35 32 35 8 Z');
           mouthPath.setAttribute('fill', 'none');
           eyeLeft.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scale(1.2)`;
@@ -361,15 +361,13 @@
     // Dynamic Mouth Morphing for Vocal / Audio Volume (0.0 to 1.0)
     function updateMouthMorph(vol) {
       if (expressions[currentExpIndex] === 'smile') {
-        // Expand U-smile arc when speaking
         const depth = 38 + vol * 18;
         mouthPath.setAttribute('d', `M 10 8 Q 50 ${depth.toFixed(1)} 90 8`);
         return;
       }
 
       if (vol > 0.05) {
-        // Open mouth into an ellipse/rectangle arc when speaking
-        const openH = 12 + vol * 22; // Height of opening
+        const openH = 12 + vol * 22;
         const topY = 20 - openH / 2;
         const botY = 20 + openH / 2;
         mouthPath.setAttribute('d', `M 8 ${topY.toFixed(1)} Q 50 ${topY.toFixed(1)} 92 ${topY.toFixed(1)} Q 92 ${botY.toFixed(1)} 50 ${botY.toFixed(1)} Q 8 ${botY.toFixed(1)} 8 ${topY.toFixed(1)} Z`);
@@ -393,7 +391,23 @@
     });
 
     // ------------------------------------------------------------
-    // MEDIAPIPE IN-CAMERA FACE RECOGNITION & GAZE TRACKING
+    // TOUCH / POINTER FALLBACK GAZE TRACKING
+    // ------------------------------------------------------------
+    function updatePointerGaze(clientX, clientY) {
+      if (isIncameActive) return; // Camera tracking takes priority when active
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      targetGazeX = ((clientX - centerX) / window.innerWidth) * 10;
+      targetGazeY = ((clientY - centerY) / window.innerHeight) * 8;
+    }
+
+    window.addEventListener('pointermove', (e) => updatePointerGaze(e.clientX, e.clientY));
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 0) updatePointerGaze(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+
+    // ------------------------------------------------------------
+    // MEDIAPIPE IN-CAMERA FACE RECOGNITION (BULLETPROOF WEBRTC)
     // ------------------------------------------------------------
     btnIncame.addEventListener('click', async () => {
       if (isIncameActive) {
@@ -405,6 +419,21 @@
 
     async function startIncameTracking() {
       try {
+        btnIncameText.textContent = '起動中...';
+
+        // 1. Direct WebRTC Camera Request (100% reliable across iOS & Android)
+        camStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'user',
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          }
+        });
+
+        webcamVideo.srcObject = camStream;
+        await webcamVideo.play();
+
+        // 2. Initialize MediaPipe Face Detection
         if (!faceDetectionInstance) {
           faceDetectionInstance = new FaceDetection({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
@@ -412,63 +441,74 @@
 
           faceDetectionInstance.setOptions({
             model: 'short',
-            minDetectionConfidence: 0.5
+            minDetectionConfidence: 0.4
           });
 
           faceDetectionInstance.onResults((results) => {
             if (results.detections && results.detections.length > 0) {
               const box = results.detections[0].locationData.relativeBoundingBox;
               
+              // Face Center (0 to 1)
               const faceX = box.xmin + box.width / 2;
               const faceY = box.ymin + box.height / 2;
 
+              // Front camera mirror calculation: normX from -0.5 to +0.5
               const normX = (1.0 - faceX) - 0.5;
               const normY = faceY - 0.5;
 
-              targetGazeX = normX * 8;
-              targetGazeY = normY * 6;
+              // Smooth Gaze Offset
+              targetGazeX = normX * 10; // -5vw to +5vw
+              targetGazeY = normY * 8;  // -4vh to +4vh
+
+              // Visual indicator: Active face tracking
+              btnIncameText.textContent = 'INCAME ON';
             }
           });
         }
 
-        if (!cameraInstance) {
-          cameraInstance = new Camera(webcamVideo, {
-            onFrame: async () => {
-              if (isIncameActive && faceDetectionInstance) {
-                await faceDetectionInstance.send({ image: webcamVideo });
-              }
-            },
-            width: 640,
-            height: 480,
-            facingMode: 'user'
-          });
-        }
-
-        await cameraInstance.start();
         isIncameActive = true;
         btnIncame.classList.add('active');
         btnIncameDot.textContent = '■';
+        btnIncameText.textContent = 'INCAME ON';
+
+        // 3. Process frames loop
+        processCameraLoop();
       } catch (err) {
-        alert('インカメのアクセスを許可してください');
+        alert('インカメのアクセス許可が必要です。\nブラウザでカメラの許可をオンにしてください。');
+        btnIncameText.textContent = 'INCAME';
         console.error(err);
       }
     }
 
+    async function processCameraLoop() {
+      if (!isIncameActive || !webcamVideo) return;
+      if (webcamVideo.readyState >= 2 && faceDetectionInstance && !isProcessingFrame) {
+        isProcessingFrame = true;
+        try {
+          await faceDetectionInstance.send({ image: webcamVideo });
+        } catch (e) {}
+        isProcessingFrame = false;
+      }
+      requestAnimationFrame(processCameraLoop);
+    }
+
     function stopIncameTracking() {
       isIncameActive = false;
-      if (cameraInstance) {
-        cameraInstance.stop();
+      if (camStream) {
+        camStream.getTracks().forEach(track => track.stop());
       }
+      webcamVideo.srcObject = null;
       targetGazeX = 0;
       targetGazeY = 0;
       btnIncame.classList.remove('active');
       btnIncameDot.textContent = '●';
+      btnIncameText.textContent = 'INCAME';
     }
 
     // Smooth Eye Gaze Animation Loop
     function renderGazeLoop() {
-      currentGazeX += (targetGazeX - currentGazeX) * 0.18;
-      currentGazeY += (targetGazeY - currentGazeY) * 0.18;
+      currentGazeX += (targetGazeX - currentGazeX) * 0.22;
+      currentGazeY += (targetGazeY - currentGazeY) * 0.22;
 
       applyExpression(expressions[currentExpIndex]);
 
@@ -510,7 +550,7 @@
       try {
         micStream = await navigator.mediaDevices.getUserMedia({
           audio: {
-            echoCancellation: false,  // Capture room speaker sound cleanly!
+            echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: true
           }
@@ -520,7 +560,7 @@
         const source = audioCtx.createMediaStreamSource(micStream);
         analyser = audioCtx.createAnalyser();
         analyser.fftSize = 256;
-        analyser.smoothingTimeConstant = 0.3; // Fast, responsive reaction to ChatGPT Voice
+        analyser.smoothingTimeConstant = 0.3;
         source.connect(analyser);
 
         isMicActive = true;
@@ -529,7 +569,7 @@
 
         renderAudioLoop();
       } catch (err) {
-        alert('マイクのアクセスを許可してください');
+        alert('マイクのアクセス許可が必要です。\nブラウザでマイクを許可してください。');
         console.error(err);
       }
     }
@@ -551,7 +591,6 @@
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(dataArray);
 
-      // High sensitivity vocal range extraction for ChatGPT Voice Mode
       let sum = 0;
       const startBin = 2;
       const endBin = Math.min(dataArray.length, 50);
@@ -561,15 +600,13 @@
       }
 
       const rms = Math.sqrt(sum / (endBin - startBin));
-      
-      // High gain multiplier so ChatGPT voice coming out of device speaker triggers lip-sync easily!
       const rawVol = Math.min(1.0, (rms / 35) * 1.8);
       const targetVol = Math.pow(rawVol, 0.65);
 
       if (targetVol > volume) {
-        volume += (targetVol - volume) * 0.5; // Instant open
+        volume += (targetVol - volume) * 0.5;
       } else {
-        volume += (targetVol - volume) * 0.25; // Smooth close
+        volume += (targetVol - volume) * 0.25;
       }
 
       volFill.style.width = `${Math.min(100, Math.round(volume * 100))}%`;
