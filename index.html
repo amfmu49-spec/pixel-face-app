@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Pixel Face - Face Tracking & MIC Lip Sync</title>
+  <title>Pixel Face - Realtime ChatGPT Voice Lip Sync & Face Tracking</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -136,32 +136,23 @@
       transition: opacity 0.12s ease;
     }
 
-    /* Mouth Element */
-    .mouth {
+    /* Mouth SVG Container */
+    .mouth-svg-container {
       width: 28vw;
-      height: 3vw;
+      height: min(10vw, 70px);
       max-width: 280px;
-      max-height: 30px;
       min-width: 140px;
-      min-height: 15px;
-      background-color: #00ffcc;
-      box-shadow: 0 0 24px rgba(0, 255, 204, 0.6), 0 0 50px rgba(0, 255, 204, 0.25);
-      border-radius: 4px;
-      transform-origin: center center;
-      transition: transform 0.05s linear, border-radius 0.2s ease, width 0.25s ease, height 0.25s ease;
-      will-change: transform, border-radius, height;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
     }
 
-    /* True U-Shaped Smile Line (Curved Line, NOT Solid Semicircle) */
-    .mouth.smile-u {
-      height: 5.5vw !important;
-      max-height: 55px !important;
-      min-height: 28px !important;
-      background-color: transparent !important;
-      border: 4px solid #00ffcc !important;
-      border-top: none !important;
-      border-radius: 0 0 100px 100px !important;
-      box-shadow: 0 8px 24px rgba(0, 255, 204, 0.7), inset 0 -4px 14px rgba(0, 255, 204, 0.5) !important;
+    .mouth-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      filter: drop-shadow(0 0 16px rgba(0, 255, 204, 0.8)) drop-shadow(0 0 35px rgba(0, 255, 204, 0.4));
     }
 
     /* Minimal Bottom Control Panel */
@@ -252,12 +243,17 @@
         </div>
       </div>
 
-      <div class="mouth" id="mouth"></div>
+      <!-- MOUTH SVG WITH PERFECT CLEAN U-SMILE & DYNAMIC OPENING -->
+      <div class="mouth-svg-container">
+        <svg class="mouth-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
+          <path id="mouth-path" d="M 5 20 L 95 20" stroke="#00ffcc" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+        </svg>
+      </div>
     </div>
 
     <!-- MINIMAL BOTTOM PANEL (MIC & INCAME) -->
     <div class="control-panel" id="control-panel">
-      <!-- MIC BUTTON -->
+      <!-- MIC BUTTON (Captures ChatGPT Voice & Device Audio) -->
       <button class="btn-action" id="btn-mic">
         <span class="btn-dot" id="btn-mic-dot">●</span>
         <span>MIC</span>
@@ -269,7 +265,7 @@
         <span>INCAME</span>
       </button>
 
-      <!-- HIGH-ACCURACY AUDIO VOL BAR -->
+      <!-- HIGH-SENSITIVITY AUDIO VOL BAR -->
       <div class="vol-track">
         <div class="vol-fill" id="vol-fill"></div>
       </div>
@@ -277,7 +273,7 @@
   </div>
 
   <script>
-    // Audio State
+    // Audio High-Sensitivity State for ChatGPT Voice Mode
     let isMicActive = false;
     let audioCtx = null;
     let analyser = null;
@@ -305,7 +301,7 @@
     const webcamVideo = document.getElementById('webcam-video');
     const eyeLeft = document.getElementById('eye-left');
     const eyeRight = document.getElementById('eye-right');
-    const mouth = document.getElementById('mouth');
+    const mouthPath = document.getElementById('mouth-path');
     
     const btnMic = document.getElementById('btn-mic');
     const btnMicDot = document.getElementById('btn-mic-dot');
@@ -325,34 +321,76 @@
     });
 
     function applyExpression(exp) {
-      mouth.classList.remove('smile-u');
-
       switch (exp) {
         case 'smile':
-          // U-Shaped Smile Line (Outlined Arc)
-          mouth.classList.add('smile-u');
+          // Pure U-Shaped Smile Arc Line (NO TOP LINE AT ALL)
+          mouthPath.setAttribute('d', 'M 10 8 Q 50 38 90 8');
+          mouthPath.setAttribute('fill', 'none');
           eyeLeft.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scaleY(0.75) scaleX(1.05)`;
           eyeRight.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scaleY(0.75) scaleX(1.05)`;
           break;
         case 'surprised':
+          // Open Surprised Oval Mouth
+          mouthPath.setAttribute('d', 'M 35 8 Q 50 8 65 8 Q 65 32 50 32 Q 35 32 35 8 Z');
+          mouthPath.setAttribute('fill', 'none');
           eyeLeft.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scale(1.2)`;
           eyeRight.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scale(1.2)`;
           break;
         case 'wink':
+          mouthPath.setAttribute('d', 'M 10 20 L 90 20');
+          mouthPath.setAttribute('fill', 'none');
           eyeLeft.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scaleY(0.12)`;
           eyeRight.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scale(1.05)`;
           break;
         case 'sleep':
+          mouthPath.setAttribute('d', 'M 10 20 L 90 20');
+          mouthPath.setAttribute('fill', 'none');
           eyeLeft.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scaleY(0.12)`;
           eyeRight.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw) scaleY(0.12)`;
           break;
         case 'neutral':
         default:
+          mouthPath.setAttribute('d', 'M 5 20 L 95 20');
+          mouthPath.setAttribute('fill', 'none');
           eyeLeft.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw)`;
           eyeRight.style.transform = `translate(${currentGazeX}vw, ${currentGazeY}vw)`;
           break;
       }
     }
+
+    // Dynamic Mouth Morphing for Vocal / Audio Volume (0.0 to 1.0)
+    function updateMouthMorph(vol) {
+      if (expressions[currentExpIndex] === 'smile') {
+        // Expand U-smile arc when speaking
+        const depth = 38 + vol * 18;
+        mouthPath.setAttribute('d', `M 10 8 Q 50 ${depth.toFixed(1)} 90 8`);
+        return;
+      }
+
+      if (vol > 0.05) {
+        // Open mouth into an ellipse/rectangle arc when speaking
+        const openH = 12 + vol * 22; // Height of opening
+        const topY = 20 - openH / 2;
+        const botY = 20 + openH / 2;
+        mouthPath.setAttribute('d', `M 8 ${topY.toFixed(1)} Q 50 ${topY.toFixed(1)} 92 ${topY.toFixed(1)} Q 92 ${botY.toFixed(1)} 50 ${botY.toFixed(1)} Q 8 ${botY.toFixed(1)} 8 ${topY.toFixed(1)} Z`);
+      } else {
+        mouthPath.setAttribute('d', 'M 5 20 L 95 20');
+      }
+    }
+
+    // Global APIs for external app integration (ChatGPT Voice, PostMessage, setPixelMouth)
+    window.setPixelMouth = function(val) {
+      const v = Math.max(0, Math.min(1, val));
+      updateMouthMorph(v);
+      volFill.style.width = `${Math.round(v * 100)}%`;
+    };
+
+    window.addEventListener('message', (event) => {
+      if (!event.data) return;
+      if (event.data.type === 'pixelTalk') {
+        window.setPixelMouth(event.data.volume || 0);
+      }
+    });
 
     // ------------------------------------------------------------
     // MEDIAPIPE IN-CAMERA FACE RECOGNITION & GAZE TRACKING
@@ -387,8 +425,8 @@
               const normX = (1.0 - faceX) - 0.5;
               const normY = faceY - 0.5;
 
-              targetGazeX = normX * 8; // -4vw to +4vw
-              targetGazeY = normY * 6; // -3vh to +3vh
+              targetGazeX = normX * 8;
+              targetGazeY = normY * 6;
             }
           });
         }
@@ -458,7 +496,7 @@
     scheduleBlink();
 
     // ------------------------------------------------------------
-    // HIGH-ACCURACY VOICE LIP SYNC (VOCAL SPECTRUM RMS)
+    // ULTRA-HIGH SENSITIVITY AUDIO LIP SYNC (FOR CHATGPT VOICE MODE & DEVICE SPEAKER)
     // ------------------------------------------------------------
     btnMic.addEventListener('click', async () => {
       if (isMicActive) {
@@ -472,8 +510,8 @@
       try {
         micStream = await navigator.mediaDevices.getUserMedia({
           audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
+            echoCancellation: false,  // Capture room speaker sound cleanly!
+            noiseSuppression: false,
             autoGainControl: true
           }
         });
@@ -481,8 +519,8 @@
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const source = audioCtx.createMediaStreamSource(micStream);
         analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = 0.4;
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.3; // Fast, responsive reaction to ChatGPT Voice
         source.connect(analyser);
 
         isMicActive = true;
@@ -504,7 +542,7 @@
       btnMic.classList.remove('active');
       btnMicDot.textContent = '●';
       volFill.style.width = '0%';
-      mouth.style.transform = 'scaleY(1)';
+      updateMouthMorph(0);
     }
 
     function renderAudioLoop() {
@@ -513,48 +551,32 @@
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(dataArray);
 
-      const startBin = 3;
-      const endBin = Math.min(dataArray.length, 60);
+      // High sensitivity vocal range extraction for ChatGPT Voice Mode
       let sum = 0;
-      let count = 0;
+      const startBin = 2;
+      const endBin = Math.min(dataArray.length, 50);
 
       for (let i = startBin; i < endBin; i++) {
         sum += dataArray[i] * dataArray[i];
-        count++;
       }
 
-      const rms = Math.sqrt(sum / count);
-      const normalizedVol = Math.min(1.0, (rms / 75));
-      const targetVol = Math.pow(normalizedVol, 0.7);
+      const rms = Math.sqrt(sum / (endBin - startBin));
+      
+      // High gain multiplier so ChatGPT voice coming out of device speaker triggers lip-sync easily!
+      const rawVol = Math.min(1.0, (rms / 35) * 1.8);
+      const targetVol = Math.pow(rawVol, 0.65);
 
       if (targetVol > volume) {
-        volume += (targetVol - volume) * 0.45;
+        volume += (targetVol - volume) * 0.5; // Instant open
       } else {
-        volume += (targetVol - volume) * 0.22;
+        volume += (targetVol - volume) * 0.25; // Smooth close
       }
 
       volFill.style.width = `${Math.min(100, Math.round(volume * 100))}%`;
-
-      if (volume > 0.05) {
-        const mouthScaleY = 1 + volume * 5.2;
-        const mouthScaleX = 1 + volume * 0.15;
-        mouth.style.transform = `scaleY(${mouthScaleY.toFixed(2)}) scaleX(${mouthScaleX.toFixed(2)})`;
-      } else {
-        mouth.style.transform = 'scaleY(1) scaleX(1)';
-      }
+      updateMouthMorph(volume);
 
       requestAnimationFrame(renderAudioLoop);
     }
-
-    // Global Window API
-    window.setPixelMouth = function(val) {
-      const v = Math.max(0, Math.min(1, val));
-      if (v > 0.05) {
-        mouth.style.transform = `scaleY(${(1 + v * 5.2).toFixed(2)}) scaleX(${(1 + v * 0.15).toFixed(2)})`;
-      } else {
-        mouth.style.transform = 'scaleY(1)';
-      }
-    };
   </script>
 </body>
 </html>
